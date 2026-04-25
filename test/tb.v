@@ -68,7 +68,7 @@ module tb ();
     end
 
     #20;
-    $finish;
+  
   end
 
 endmodule
