@@ -8,33 +8,41 @@ from cocotb.triggers import ClockCycles
 
 @cocotb.test()
 async def test_project(dut):
-    dut._log.info("Start")
+    dut._log.info("Start Comparator Test")
 
-    # Set the clock period to 10 us (100 KHz)
+    # Clock setup
     clock = Clock(dut.clk, 10, unit="us")
     cocotb.start_soon(clock.start())
 
     # Reset
-    dut._log.info("Reset")
     dut.ena.value = 1
     dut.ui_in.value = 0
     dut.uio_in.value = 0
     dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
+    await ClockCycles(dut.clk, 5)
     dut.rst_n.value = 1
 
-    dut._log.info("Test project behavior")
+    dut._log.info("Running test cases")
 
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 30
+    # Test all combinations of 2-bit inputs
+    for A in range(4):      # 00 to 11
+        for B in range(4):  # 00 to 11
 
-    # Wait for one clock cycle to see the output values
-    await ClockCycles(dut.clk, 1)
+            # Pack inputs: A = [1:0], B = [3:2]
+            dut.ui_in.value = (B << 2) | A
+            dut.uio_in.value = 0
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 50
+            await ClockCycles(dut.clk, 1)
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+            gt = int(dut.uo_out.value[0])
+            eq = int(dut.uo_out.value[1])
+            lt = int(dut.uo_out.value[2])
+
+            dut._log.info(f"A={A:02b} B={B:02b} | GT={gt} EQ={eq} LT={lt}")
+
+            # Expected results
+            assert gt == (A > B), f"GT failed for A={A}, B={B}"
+            assert eq == (A == B), f"EQ failed for A={A}, B={B}"
+            assert lt == (A < B), f"LT failed for A={A}, B={B}"
+
+    dut._log.info("All test cases passed ✅")
